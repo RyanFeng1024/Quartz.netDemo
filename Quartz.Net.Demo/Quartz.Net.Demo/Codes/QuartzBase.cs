@@ -12,7 +12,7 @@ namespace Quartz.Net.Demo.Codes
         {
             await QuartzUtil.AddJob<GetRecordJob>("job1", "0/5 * * * * ?");     //5s执行一次
 
-            //如果有多个任务 在这里添加..
+            //项目运行时，如果有多个任务 在这里添加.. 动态添加、删除Job请看HomeController
         }
     }
 }

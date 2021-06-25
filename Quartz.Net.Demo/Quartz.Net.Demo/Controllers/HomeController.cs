@@ -12,9 +12,27 @@ namespace Quartz.Net.Demo.Controllers
     {
         public ActionResult Index()
         {
+            string jobs = QuartzUtil.PrintAllJobsInfo().Result;
+            ViewBag.AllJobs = jobs.Replace("\n", "<br />");
             return View();
         }
-        
+
+        public ActionResult AddJob()
+        {
+            int intervalSecs = 10;
+            Dictionary<string, object> map = new Dictionary<string, object>();
+            map.Add("job_data", "add the data you want to use in the job");
+            QuartzUtil.AddSimpleJob<TestJob>("TEST_JOB_" + DateTime.Now.ToString("HHmmss"), intervalSecs, map);
+            return Redirect("/");
+        }
+
+        public ActionResult DeleteJob()
+        {
+            string jobName = "job1";
+            QuartzUtil.DeleteJob(jobName);
+            return Redirect("/");
+        }
+
         public ActionResult Restart()
         {
             MvcApplication.Restart();
