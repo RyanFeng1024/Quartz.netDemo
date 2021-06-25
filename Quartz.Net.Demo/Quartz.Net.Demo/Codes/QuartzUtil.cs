@@ -1,4 +1,5 @@
 ﻿using Quartz.Impl;
+using Quartz.Impl.Matchers;
 using Quartz.Impl.Triggers;
 using System;
 using System.Collections.Generic;
@@ -25,13 +26,53 @@ namespace Quartz.Net.Demo.Codes
             await sched.Start();
         }
 
+
+        /// <summary>
+        /// 时间间隔执行任务
+        /// </summary>
+        /// <typeparam name="T">任务类，必须实现IJob接口</typeparam>
+        /// <param name="JobName">任务名称</param>
+        /// <param name="seconds">时间间隔(单位：秒)</param>
+        public static async Task AddSimpleJob<T>(string JobName, int seconds) where T : IJob
+        {
+            IJobDetail job = JobBuilder.Create<T>().WithIdentity(JobName, JobName + "_Group").Build();
+            ITrigger trigger = TriggerBuilder.Create()
+                                .StartNow()
+                                .WithSimpleSchedule(x => x.WithIntervalInSeconds(seconds).RepeatForever())
+                                .Build();
+
+            await sched.ScheduleJob(job, trigger);
+        }
+
+        /// <summary>
+        /// 时间间隔执行任务
+        /// </summary>
+        /// <typeparam name="T">任务类，必须实现IJob接口</typeparam>
+        /// <param name="JobName">任务名称</param>
+        /// <param name="seconds">时间间隔(单位：秒)</param>
+        /// <param name="map">执行任务时携带的参数</param>
+        public static async Task AddSimpleJob<T>(string JobName, int seconds, Dictionary<string, object> map) where T : IJob
+        {
+            IJobDetail job = JobBuilder.Create<T>().WithIdentity(JobName, JobName + "_Group").Build();
+            if (map != null)
+            {
+                job.JobDataMap.PutAll(map);
+            }
+            ITrigger trigger = TriggerBuilder.Create()
+                                .StartNow()
+                                .WithSimpleSchedule(x => x.WithIntervalInSeconds(seconds).RepeatForever())
+                                .Build();
+
+            await sched.ScheduleJob(job, trigger);
+        }
+
         /// <summary>
         /// 添加Job 并且以定点的形式运行
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="JobName"></param>
         /// <param name="CronTime"></param>
-        /// <param name="jobDataMap"></param>
+        /// <param name="map"></param>
         /// <returns></returns>
         public static async Task AddJob<T>(string JobName, string CronTime, Dictionary<string, object> map) where T : IJob
         {
@@ -225,6 +266,36 @@ namespace Quartz.Net.Demo.Codes
             isExists = await sched.CheckExists(triggerKey);
 
             return isExists;
+        }
+
+        /// <summary>
+        /// 打印所有Job信息
+        /// </summary>
+        public static async Task<string> PrintAllJobsInfo()
+        {
+            string content = "当前任务列表：";
+            IReadOnlyCollection<string> jobGroups = await sched.GetJobGroupNames();
+            foreach (string group in jobGroups)
+            {
+                var groupMatcher = GroupMatcher<JobKey>.GroupContains(group);
+                var jobKeys = await sched.GetJobKeys(groupMatcher);
+                foreach (var jobKey in jobKeys)
+                {
+                    var detail = await sched.GetJobDetail(jobKey);
+                    var triggers = await sched.GetTriggersOfJob(jobKey);
+                    foreach (ITrigger trigger in triggers)
+                    {
+                        content += "\n    任务名称：" + jobKey.Name;
+                        DateTimeOffset? nextFireTime = trigger.GetNextFireTimeUtc();
+                        if (nextFireTime.HasValue)
+                        {
+                            content += "，下次执行时间：" + nextFireTime.Value.LocalDateTime.ToString();
+                        }
+                    }
+                }
+            }
+            Console.WriteLine(content);
+            return content;
         }
     }
 }
